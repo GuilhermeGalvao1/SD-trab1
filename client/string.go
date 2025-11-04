@@ -4,41 +4,10 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
 )
-
-type baseClient struct {
-	conn net.Conn
-}
-
-func (c *baseClient) Connect(ctx context.Context, host, port string) error {
-	var d net.Dialer
-
-	conn, err := d.DialContext(ctx, "tcp", net.JoinHostPort(host, port))
-	if err != nil {
-		return fmt.Errorf("falha ao conectar (%s:%s): %w", host, port, err)
-	}
-	c.conn = conn
-	return nil
-}
-
-func (c *baseClient) Disconnect() error {
-	if c.conn != nil {
-		return c.conn.Close()
-	}
-	return nil
-}
-
-func (c *baseClient) setDeadline(ctx context.Context) error {
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(30 * time.Second)
-	}
-	return c.conn.SetDeadline(deadline)
-}
 
 type StringClient struct {
 	baseClient
@@ -51,7 +20,7 @@ func NewStringClient() *StringClient {
 }
 
 func (c *StringClient) Connect(ctx context.Context, host string) error {
-	if err := c.baseClient.Connect(ctx, host, "8081"); err != nil {
+	if err := c.baseClient.Connect(ctx, host, "8080"); err != nil {
 		return err
 	}
 	c.reader = bufio.NewReader(c.conn)
