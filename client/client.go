@@ -25,14 +25,14 @@ type SomaResponse struct {
 }
 
 type TimestampResponse struct {
-	TimestampFormatado string
-	Timezone           string
-	InfoTemporais      string
+	TimestampFormatado   string
+	Timezone             string
+	InformacoesTemporais string
 }
 
 type StatusResponse struct {
 	Status               string
-	OperaçõesProcessadas int
+	OperacoesProcessadas int
 	Estatisticas         map[string]any
 }
 
@@ -62,7 +62,7 @@ type Client interface {
 
 	OpEcho(ctx context.Context, token, msg string) (*EchoResponse, error)
 
-	OpSoma(ctx context.Context, token string, numeros []float64) (*SomaResponse, error)
+	OpSoma(ctx context.Context, token string, numeros []string) (*SomaResponse, error)
 
 	OpTimestamp(ctx context.Context, token string) (*TimestampResponse, error)
 
