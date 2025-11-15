@@ -37,7 +37,8 @@ func (c *StringClient) sendAndReceive(ctx context.Context, requestBody string) (
 		return nil, err
 	}
 
-	msg := fmt.Sprintf("%s||%s\n", requestBody, c.getTimestamp())
+	ts := c.getTimestamp()
+	msg := fmt.Sprintf("%s|timestamp=%s|FIM\n", requestBody, ts)
 
 	if _, err := c.writer.WriteString(msg); err != nil {
 		return nil, fmt.Errorf("falha ao escrever: %w", err)
@@ -58,22 +59,34 @@ func (c *StringClient) sendAndReceive(ctx context.Context, requestBody string) (
 		return nil, fmt.Errorf("resposta vazia ou inválida do servidor")
 	}
 
-	if parts[0] == "ERRO" {
+	if parts[0] == "ERROR" {
 		if len(parts) > 1 {
 			return nil, fmt.Errorf("erro do servidor: %s", strings.Join(parts[1:], "|"))
 		}
 		return nil, fmt.Errorf("erro desconhecido do servidor")
 	}
 
-	if parts[0] == "OK" {
-		return nil, fmt.Errorf("resposta inesperada do servidor (não OK): %s", resp)
+	if parts[0] != "OK" {
+		return nil, fmt.Errorf("resposta inesperada do servidor: %s", resp)
+	}
+
+	if len(parts) > 0 && parts[len(parts)-1] == "FIM" {
+		parts = parts[:len(parts)-1]
 	}
 
 	return parts[1:], nil
 }
 
+func splitVal(kv string) string {
+	s := strings.SplitN(kv, "=", 2)
+	if len(s) == 2 {
+		return s[1]
+	}
+	return kv
+}
+
 func (c *StringClient) Auth(ctx context.Context, alunoID string) (*AuthResponse, error) {
-	reqBody := fmt.Sprintf("AUTH|%s", alunoID)
+	reqBody := "AUTH|aluno_id=" + alunoID
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -84,15 +97,14 @@ func (c *StringClient) Auth(ctx context.Context, alunoID string) (*AuthResponse,
 	}
 
 	return &AuthResponse{
-		Token:     parts[0],
-		Nome:      parts[1],
-		Matricula: parts[2],
+		Token:     splitVal(parts[0]),
+		Nome:      splitVal(parts[1]),
+		Matricula: splitVal(parts[2]),
 	}, nil
 }
 
 func (c *StringClient) OpEcho(ctx context.Context, token, msg string) (*EchoResponse, error) {
-	param1 := fmt.Sprintf("echo mensagem %s", msg)
-	reqBody := fmt.Sprintf("OP|%s|%s", param1, token)
+	reqBody := fmt.Sprintf("OP|operacao=echo|mensagem=%s|token=%s", msg, token)
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -102,39 +114,35 @@ func (c *StringClient) OpEcho(ctx context.Context, token, msg string) (*EchoResp
 		return nil, fmt.Errorf("resposta de ECHO incompleta. Esperado 5 campos, recebido %d", len(parts))
 	}
 
-	tamanho, _ := strconv.Atoi(parts[3])
+	tamanho, _ := strconv.Atoi(splitVal(parts[3]))
 	return &EchoResponse{
-		MensagemOriginal: parts[0],
-		Eco:              parts[1],
-		Timestamp:        parts[2],
+		MensagemOriginal: splitVal(parts[0]),
+		Eco:              splitVal(parts[1]),
+		Timestamp:        splitVal(parts[2]),
 		Tamanho:          tamanho,
-		HashMD5:          parts[4],
+		HashMD5:          splitVal(parts[4]),
 	}, nil
 }
 
-func (c *StringClient) OpSoma(ctx context.Context, token string, numeros []float64) (*SomaResponse, error) {
-	numStrs := make([]string, len(numeros))
-	for i, n := range numeros {
-		numStrs[i] = strconv.FormatFloat(n, 'f', -1, 64)
-	}
-	numListStr := strings.Join(numStrs, ",")
+func (c *StringClient) OpSoma(ctx context.Context, token string, numeros []string) (*SomaResponse, error) {
+	numListStr := strings.Join(numeros, ",")
 
-	param1 := fmt.Sprintf("soma numeros %s", numListStr)
-	reqBody := fmt.Sprintf("OP|%s|%s", param1, token)
+	reqBody := fmt.Sprintf(`OP|operacao=soma|nums=%s|token=%s`, numListStr, token)
+
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(parts) < 5 {
-		return nil, fmt.Errorf("resposta de SOMA incompleta. Esperado 5 campos, recebido %d", len(parts))
+	if len(parts) < 6 {
+		return nil, fmt.Errorf("resposta de SOMA incompleta. Esperado 6 campos, recebido %d", len(parts))
 	}
 
-	soma, _ := strconv.ParseFloat(parts[0], 64)
-	media, _ := strconv.ParseFloat(parts[1], 64)
-	maximo, _ := strconv.ParseFloat(parts[2], 64)
-	minimo, _ := strconv.ParseFloat(parts[3], 64)
-	count, _ := strconv.Atoi(parts[4])
+	soma, _ := strconv.ParseFloat(splitVal(parts[2]), 64)
+	media, _ := strconv.ParseFloat(splitVal(parts[3]), 64)
+	maximo, _ := strconv.ParseFloat(splitVal(parts[4]), 64)
+	minimo, _ := strconv.ParseFloat(splitVal(parts[5]), 64)
+	count, _ := strconv.Atoi(splitVal(parts[1]))
 
 	return &SomaResponse{
 		Soma:               soma,
@@ -146,8 +154,7 @@ func (c *StringClient) OpSoma(ctx context.Context, token string, numeros []float
 }
 
 func (c *StringClient) OpTimestamp(ctx context.Context, token string) (*TimestampResponse, error) {
-	param1 := "timestamp"
-	reqBody := fmt.Sprintf("OP|%s|%s", param1, token)
+	reqBody := "OP|operacao=timestamp|token=" + token
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -158,19 +165,14 @@ func (c *StringClient) OpTimestamp(ctx context.Context, token string) (*Timestam
 	}
 
 	return &TimestampResponse{
-		TimestampFormatado: parts[0],
-		Timezone:           parts[1],
-		InfoTemporais:      parts[2],
+		TimestampFormatado:   splitVal(parts[0]),
+		Timezone:             splitVal(parts[1]),
+		InformacoesTemporais: splitVal(parts[2]),
 	}, nil
 }
 
 func (c *StringClient) OpStatus(ctx context.Context, token string, detalhado bool) (*StatusResponse, error) {
-	param1 := "status"
-	if detalhado {
-		param1 = "status detalhado"
-	}
-
-	reqBody := fmt.Sprintf("OP|%s|%s", param1, token)
+	reqBody := fmt.Sprintf("OP|operacao=status|detalhado=%t|token=%s", detalhado, token)
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -180,28 +182,31 @@ func (c *StringClient) OpStatus(ctx context.Context, token string, detalhado boo
 		return nil, fmt.Errorf("resposta de STATUS incompleta. Esperado 2+ campos, recebido %d", len(parts))
 	}
 
-	opCount, _ := strconv.Atoi(parts[1])
 	resp := &StatusResponse{
-		Status:               parts[0],
-		OperaçõesProcessadas: opCount,
+		Status: splitVal(parts[0]),
 	}
 
 	if detalhado && len(parts) > 2 {
+		opCount, _ := strconv.Atoi(splitVal(parts[2]))
+		resp.OperacoesProcessadas = opCount
 		resp.Estatisticas = map[string]any{
 			"raw_stats": strings.Join(parts[2:], "|"),
 		}
+	} else if len(parts) > 1 {
+		opCount, _ := strconv.Atoi(splitVal(parts[1]))
+		resp.OperacoesProcessadas = opCount
 	}
 
 	return resp, nil
 }
 
 func (c *StringClient) OpHistorico(ctx context.Context, token string, limite int) (*HistoricoResponse, error) {
-	param1 := "historico"
+	reqBodyBase := "OP|operacao=historico"
 	if limite > 0 {
-		param1 = fmt.Sprintf("historico limite %d", limite)
+		reqBodyBase = fmt.Sprintf("%s|limite=%d", reqBodyBase, limite)
 	}
+	reqBody := reqBodyBase + "|token=" + token
 
-	reqBody := fmt.Sprintf("OP|%s|%s", param1, token)
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -211,7 +216,8 @@ func (c *StringClient) OpHistorico(ctx context.Context, token string, limite int
 		return nil, fmt.Errorf("resposta de HISTORICO incompleta. Esperado 2 campos, recebido %d", len(parts))
 	}
 
-	opStrings := strings.Split(parts[0], ",")
+	opListStr := splitVal(parts[0])
+	opStrings := strings.Split(opListStr, ",")
 	operacoes := make([]OperacaoInfo, len(opStrings))
 	for i, opStr := range opStrings {
 		operacoes[i] = OperacaoInfo{Comando: opStr, Timestamp: "N/A", Sucesso: true}
@@ -220,13 +226,13 @@ func (c *StringClient) OpHistorico(ctx context.Context, token string, limite int
 	return &HistoricoResponse{
 		Operacoes: operacoes,
 		Estatisticas: map[string]any{
-			"raw_stats": parts[1],
+			"raw_stats": splitVal(parts[1]),
 		},
 	}, nil
 }
 
 func (c *StringClient) Info(ctx context.Context, token, tipo string) (*InfoResponse, error) {
-	reqBody := fmt.Sprintf("INFO|%s|%s", tipo, token)
+	reqBody := fmt.Sprintf("INFO|tipo=%s|token=%s", tipo, token)
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return nil, err
@@ -237,14 +243,14 @@ func (c *StringClient) Info(ctx context.Context, token, tipo string) (*InfoRespo
 	}
 
 	return &InfoResponse{
-		DescricaoServidor: parts[0],
-		ProtocoloAtivo:    parts[1],
-		Capacidades:       strings.Split(parts[2], ","),
+		DescricaoServidor: splitVal(parts[0]),
+		ProtocoloAtivo:    splitVal(parts[1]),
+		Capacidades:       strings.Split(splitVal(parts[2]), ","),
 	}, nil
 }
 
 func (c *StringClient) Logout(ctx context.Context, token string) error {
-	reqBody := fmt.Sprintf("LOGOUT|%s", token)
+	reqBody := "LOGOUT|token=" + token
 	parts, err := c.sendAndReceive(ctx, reqBody)
 	if err != nil {
 		return err
@@ -254,6 +260,6 @@ func (c *StringClient) Logout(ctx context.Context, token string) error {
 		return fmt.Errorf("resposta de LOGOUT inválida")
 	}
 
-	fmt.Printf("[Servidor String]: %s\n", parts[0])
+	fmt.Printf("[Servidor String]: %s\n", splitVal(parts[0]))
 	return nil
 }
