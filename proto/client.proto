@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package api;
+
+// 1. Esta linha DEVE corresponder ao caminho do seu módulo go.mod + a pasta
+option go_package = "github.com/GuilhermeGalvao1/SD-trab1/proto";
+
+// 2. Esta é a estrutura de Requisição do erikbayerlein
+message Requisicao {
+  oneof conteudo {
+    Auth auth = 1;
+    Operacao operacao = 2;
+  }
+}
+
+message Auth {
+  string aluno_id  = 1;
+  string timestamp = 2;
+}
+
+message Operacao {
+  string token         = 1;
+  string nome_operacao = 2;
+  map<string,string> parametros = 3;
+  string timestamp     = 4;
+}
+
+// 3. Esta é a estrutura de Resposta do erikbayerlein
+message Resposta {
+  OperacaoResponse operacao = 1;
+}
+
+message OperacaoResponse {
+  bool  sucesso   = 1;
+  map<string,string> resultado = 2;
+  string timestamp = 3;
+}
