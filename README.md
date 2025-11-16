@@ -181,23 +181,6 @@ go run . -proto=[PROTOCOLO] -host=[IP] -id=[MATRICULA]
 - `-host`: IP do servidor - padrão: `3.88.99.255`
 - `-id`: Matrícula do aluno - padrão: `520402`
 
-### Exemplos
-
-**Protocolo String:**
-```bash
-go run . -proto=string -host=3.88.99.255 -id=520402
-```
-
-**Protocolo JSON:**
-```bash
-go run . -proto=json -host=3.88.99.255 -id=520402
-```
-
-**Protocol Buffers:**
-```bash
-go run . -proto=proto -host=3.88.99.255 -id=520402
-```
-
 ## 🔧 Operações Disponíveis
 
 A aplicação executa uma sequência de 9 operações em ordem:
