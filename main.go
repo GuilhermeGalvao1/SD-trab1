@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
-	proto := flag.String("proto", "json", "Protocolo a ser usado (string, json, proto)")
-	host := flag.String("host", "3.88.99.255", "IP do servidor (fornecido pelo professor)")
-	id := flag.String("id", "520402", "Matrícula do aluno para teste (ex: 202301001)")
+	proto := flag.String("proto", "json", "Protocolo a ser usado")
+	host := flag.String("host", "3.88.99.255", "IP do servidor")
+	id := flag.String("id", "520402", "Matrícula do aluno para teste")
 	flag.Parse()
 
 	if *host == "" {
