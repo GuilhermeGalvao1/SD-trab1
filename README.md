@@ -15,7 +15,7 @@ Este projeto implementa um cliente em Go capaz de se comunicar com um servidor r
 
 ## 🎯 Visão Geral
 
-O projeto consiste em uma aplicação cliente que se conecta a um servidor remoto (IP: 3.88.99.255) e executa uma sequência de operações utilizando diferentes protocolos de comunicação. Cada protocolo opera em uma porta específica e possui sua própria implementação de serialização/deserialização de mensagens.
+O projeto consiste em uma aplicação cliente que se conecta a um servidor remoto (IP) e executa uma sequência de operações utilizando diferentes protocolos de comunicação. Cada protocolo opera em uma porta específica e possui sua própria implementação de serialização/deserialização de mensagens.
 
 ## 📁 Estrutura do Projeto
 
@@ -178,8 +178,8 @@ go run . -proto=[PROTOCOLO] -host=[IP] -id=[MATRICULA]
 
 ### Parâmetros
 - `-proto`: Protocolo a usar (`string`, `json`, ou `proto`) - padrão: `json`
-- `-host`: IP do servidor - padrão: `3.88.99.255`
-- `-id`: Matrícula do aluno - padrão: `520402`
+- `-host`: IP do servidor 
+- `-id`: Matrícula do aluno 
 
 ## 🔧 Operações Disponíveis
 
@@ -232,7 +232,7 @@ Estabelece conexão TCP com o servidor na porta específica do protocolo.
 
 ```
 2025/11/16 19:44:43 Iniciando teste com protocolo: proto
-[PASSO 1/9] Conectando a 3.88.99.255 (protocolo: proto)... Conectado.
+[PASSO 1/9] Conectando a (IP)) (protocolo: proto)... Conectado.
 [PASSO 2/9] Autenticando com ID: 520402... Autenticado: GUILHERME GALVÃO SERRA SILVA (520402)
 [PASSO 3/9] Testando OpEcho... Echo OK: Hash 4969d59a3b4e2da4a8b446d571e1233e
 [PASSO 4/9] Testando OpSoma... Soma OK: Soma=6.00, Média=2.00, Max=3.00, Min=1.00
